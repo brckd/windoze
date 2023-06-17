@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "bierner.github-markdown-preview",
-    "esbenp.prettier-vscode"
+    "esbenp.prettier-vscode",
+    "ms-vscode.powershell"
   ]
 }
