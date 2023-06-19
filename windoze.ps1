@@ -46,7 +46,7 @@ function Spin([String]$Text, [scriptblock]$Script, [int]$Color) {
     [console]::CursorVisible = $false
     while ($Job.State -eq "Running") {
         $Frame = ($Frame + 1) % $Frames.Length
-        Write-Host -NoNewline "`r$(Color $Frames[$Frame] $Color) $($Text)"
+        Write-Host -NoNewline "`r$(Status $Text (Color $Frames[$Frame] $Color))"
         Start-Sleep 0.04
     }
     Reset-Line
@@ -66,7 +66,20 @@ function Reset-Line {
     Write-Host -NoNewline "`r$(" " * $host.UI.RawUI.CursorPosition.X)`r"
 }
 
+<#
+.DESCRIPTION
+    Format a status.
+.PARAMETER Text
+    The text of the status.
+.PARAMETER Status
+    The status to prepend.
+#>
+function Status([string]$Text, [string]$Status) {
+    return "$Status $Text"
+}
+
+
 # Print welcome screen.
 Write-Output "`nWelcome to $(Color 'Windoze' $COLOR) image creator!`n"
 
-Spin "hi" { Start-Sleep 1 }
+Spin "hi" { Start-Sleep 1 } $COLOR
