@@ -5,15 +5,15 @@
     Glamorous shell scripts to create your very own Windows image.
 .PARAMETER Source
     Path of the image that should be altered.
-    If not specified, will be prompted 
-.PARAMETER COLOR
-    Highlight color of the output.
-    Defaults to Windoze blue.
+    If not specified, will be prompted
 #>
 param(
-    [string]$Source,
-    [ushort]$COLOR = 12
+    [string]$Source
 )
+
+$env:WINDOZE_HIGHLIGHT ??= 12
+$env:WINDOZE_CONFIRM ??= 9
+$env:WINDOZE_REJECT ??= 10
 
 <#
 .DESCRIPTION
@@ -38,11 +38,22 @@ function Ansi([ushort[]]$Arguments, [char]$Command = "m") {
 .PARAMETER Background
     The color of the background.
 #>
-function Color([string]$Text, $Foreground = @(), $Background = @()) {
-    if ($Foreground.Length) { $Foreground = 38, 5, $Foreground } 
-    if ($Background.Length) { $Background = 48, 5, $Background } 
-    $Ansi = Ansi ($Foreground + $Background)
-    return $Ansi ? "$Ansi$Text$(Ansi 0)" : "$Text"
+function Color([string]$Text, [ushort]$Foreground, [ushort]$Background) {
+    $Args = (
+        $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() }) + `
+        $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() })
+    )
+    return $Args.Length ? "$(Ansi $Args)$Text$(Ansi 0)" : "$Text"
+}
+
+<#
+.DESCRIPTION
+    Highlight a text.
+.PARAMETER Text
+    The text to highlight.
+#>
+function Highlight([string]$Text) {
+    return Color $Text $env:WINDOZE_HIGHLIGHT
 }
 
 <#
@@ -55,7 +66,7 @@ function Color([string]$Text, $Foreground = @(), $Background = @()) {
 .PARAMETER Color
     The highlight color of the spinner
 #>
-function Spin([string]$Text, [scriptblock]$Script, [int]$Color) {
+function Spin([string]$Text, [scriptblock]$Script, [int]$Color = $env:WINDOZE_HIGHLIGHT) {
     $Frames = "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"
     $Frame = 0
     $Job = Start-Job -ScriptBlock $Script
@@ -93,21 +104,21 @@ function Reset-Line {
 .PARAMETER Color
     The color to use for the status.
 #>
-function Status([string]$Text, [string]$Status, [int]$Color = $COLOR) {
+function Status([string]$Text, [string]$Status, [int]$Color = $env:WINDOZE_HIGHLIGHT) {
     return "$(Color $Status $Color) $Text"
 }
 
-function Confirm([string]$Text, [string]$Color = 10) {
-    return Status $Text "✔" $COLOR
+function Confirm([string]$Text, [string]$Color = $env:WINDOZE_CONFIRM) {
+    return Status $Text "✔" $Color
 }
 
-function Reject([string]$Text, [string]$Color = 9) {
-    return Status $Text "✘" $COLOR
+function Reject([string]$Text, [string]$Color = $env:WINDOZE_REJECT) {
+    return Status $Text "✘" $Color
 }
 
 # Print welcome screen.
-Write-Output "`nWelcome to $(Color "Windoze" $COLOR) image creator!`n"
+Write-Output "`nWelcome to $(Highlight "Windoze") image creator!`n"
 
-Spin "Processing..." { Start-Sleep 3 } $COLOR
+Spin "Processing..." { Start-Sleep 3 }
 Confirm "Done"
 Reject "Error"
