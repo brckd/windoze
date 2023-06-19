@@ -2,7 +2,7 @@
 .SYNOPSIS
     Windoze image creator.
 .DESCRIPTION
-    Glamorous shell scripts to create your very own Windows image.
+    Glamorous shell script to create your very own Windows image.
 .PARAMETER Source
     Path of the image that should be altered.
     If not specified, will be prompted later.
