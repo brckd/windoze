@@ -12,20 +12,37 @@
 #>
 param(
     [string]$Source,
-    [int]$COLOR = 94
+    [ushort]$COLOR = 12
 )
 
-# highlight the provided text with a ANSI color code
 <#
 .DESCRIPTION
-    Highlight text with a ANSI color code.
-.PARAMETER Text
-    The text to highlight.
-.PARAMETER Color
-    The ANSII code to highlight the text with.
+    Formats a list of arguments into an ANSI code.
+.PARAMETER Arguments
+    The list of arguments to format.
+.PARAMETER Command
+    The command to use.
+    Defaults to Select Graphic Rendition.
 #>
-function Color([String]$Text, [int]$Color) {
-    return "$([char]27)[$($Color)m$Text$([char]27)[0m"
+function Ansi([ushort[]]$Arguments, [char]$Command = "m") {
+    return $Arguments.Length ? "$([char]27)[$($Arguments -join ";")$Command" : ""
+}
+
+<#
+.DESCRIPTION
+    Apply coloring to text.
+.PARAMETER Text
+    The text to style.
+.PARAMETER Foreground
+    The color of the text.
+.PARAMETER Background
+    The color of the background.
+#>
+function Color([string]$Text, $Foreground = @(), $Background = @()) {
+    if ($Foreground.Length) { $Foreground = 38, 5, $Foreground } 
+    if ($Background.Length) { $Background = 48, 5, $Background } 
+    $Ansi = Ansi ($Foreground + $Background)
+    return $Ansi ? "$Ansi$Text$(Ansi 0)" : "$Text"
 }
 
 <#
@@ -76,20 +93,20 @@ function Reset-Line {
 .PARAMETER Color
     The color to use for the status.
 #>
-function Status([string]$Text, [string]$Status, [int]$Color) {
+function Status([string]$Text, [string]$Status, [int]$Color = $COLOR) {
     return "$(Color $Status $Color) $Text"
 }
 
-function Confirm([string]$Text, [string]$Color = 92) {
+function Confirm([string]$Text, [string]$Color = 10) {
     return Status $Text "✔" $COLOR
 }
 
-function Reject([string]$Text, [string]$Color = 91) {
+function Reject([string]$Text, [string]$Color = 9) {
     return Status $Text "✘" $COLOR
 }
 
 # Print welcome screen.
-Write-Output "`nWelcome to $(Color 'Windoze' $COLOR) image creator!`n"
+Write-Output "`nWelcome to $(Color "Windoze" $COLOR) image creator!`n"
 
 Spin "Processing..." { Start-Sleep 3 } $COLOR
 Confirm "Done"
