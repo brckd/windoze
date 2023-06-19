@@ -38,7 +38,7 @@ function Color([String]$Text, [int]$Color) {
 .PARAMETER Color
     The highlight color of the spinner
 #>
-function Spin([String]$Text, [scriptblock]$Script, [int]$Color) {
+function Spin([string]$Text, [scriptblock]$Script, [int]$Color) {
     $Frames = "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"
     $Frame = 0
     $Job = Start-Job -ScriptBlock $Script
@@ -46,7 +46,7 @@ function Spin([String]$Text, [scriptblock]$Script, [int]$Color) {
     [console]::CursorVisible = $false
     while ($Job.State -eq "Running") {
         $Frame = ($Frame + 1) % $Frames.Length
-        Write-Host -NoNewline "`r$(Status $Text (Color $Frames[$Frame] $Color))"
+        Write-Host -NoNewline "`r$(Status $Text $Frames[$Frame] $Color)"
         Start-Sleep 0.04
     }
     Reset-Line
@@ -73,13 +73,24 @@ function Reset-Line {
     The text of the status.
 .PARAMETER Status
     The status to prepend.
+.PARAMETER Color
+    The color to use for the status.
 #>
-function Status([string]$Text, [string]$Status) {
-    return "$Status $Text"
+function Status([string]$Text, [string]$Status, [int]$Color) {
+    return "$(Color $Status $Color) $Text"
 }
 
+function Confirm([string]$Text, [string]$Color = 92) {
+    return Status $Text "✔" $COLOR
+}
+
+function Reject([string]$Text, [string]$Color = 91) {
+    return Status $Text "✘" $COLOR
+}
 
 # Print welcome screen.
 Write-Output "`nWelcome to $(Color 'Windoze' $COLOR) image creator!`n"
 
-Spin "hi" { Start-Sleep 1 } $COLOR
+Spin "Processing..." { Start-Sleep 3 } $COLOR
+Confirm "Done"
+Reject "Error"
