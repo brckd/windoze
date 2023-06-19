@@ -32,35 +32,41 @@ function Color([String]$Text, [int]$Color) {
 .DESCRIPTION
     Play a spinning animation while executing a script.
 .PARAMETER Title
-    The title to display while executing the job.
+    The text to display while executing the job.
 .PARAMETER Script
     The script to execute.
 .PARAMETER Color
     The highlight color of the spinner
 #>
-function Spin([String]$Title, [scriptblock]$Script, [int]$Color) {
-    $CursorPosition = $host.UI.RawUI.CursorPosition
+function Spin([String]$Text, [scriptblock]$Script, [int]$Color) {
     $Frames = "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"
+    $Frame = 0
     $Job = Start-Job -ScriptBlock $Script
 
     [console]::CursorVisible = $false
-
-    for ($Frame = 0; $Job.State -ne "Completed"; $Frame++) {
-        $Frame %= $Frames.Length
-        Write-Host -NoNewline "`r$(Color $Frames[$Frame] $Color) $($Title)"
+    while ($Job.State -eq "Running") {
+        $Frame = ($Frame + 1) % $Frames.Length
+        Write-Host -NoNewline "`r$(Color $Frames[$Frame] $Color) $($Text)"
         Start-Sleep 0.04
     }
-
-    Write-Host -NoNewline "`r"
-    $CursorPosition.Y += 1
+    Reset-Line
     [console]::CursorVisible = $true
     
     $Result = Receive-Job $Job
     Remove-Job -Job $Job
     if ($Job.Error) { throw $Job.Error } 
-
     return $Result
 }
 
+<#
+.DESCRIPTION
+    Reset the current line in the console.
+#>
+function Reset-Line {
+    Write-Host -NoNewline "`r$(" " * $host.UI.RawUI.CursorPosition.X)`r"
+}
+
 # Print welcome screen.
-Write-Output "`nWelcome to $(Color $COLOR 'Windoze')!`n"
+Write-Output "`nWelcome to $(Color 'Windoze' $COLOR) image creator!`n"
+
+Spin "hi" { Start-Sleep 1 }
