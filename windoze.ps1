@@ -103,12 +103,13 @@ function Spin(
         Write-Host -NoNewline "`r$(Status $Text $Frames[$Frame] -C $Color)"
         Start-Sleep 0.04
     }
-    Write-Host "`r$(Confirm $Text)"
+    Write-Host "`r$(if ($Job.Error) {Confirm $Text} else {Reject $Text})"
     [console]::CursorVisible = $true
     
     $Result = Receive-Job $Job
     Remove-Job -Job $Job
-    if ($Job.Error) { throw $Job.Error } 
+    if ($Job.Error) { throw $Job.Error }
+
     return $Result
 }
 
@@ -191,6 +192,6 @@ function Reject(
 
 # Print welcome screen.
 Write-Output "`nWelcome to $(Highlight "Windoze") image creator!`n"
-Spin "Processing..." { Start-Sleep 3 }
+Spin "Processing..." { Start-Sleep 1; throw "ono" }
 Confirm "Done"
 Reject "Error"
