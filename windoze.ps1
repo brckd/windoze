@@ -120,7 +120,7 @@ function Write-Spin(
         Write-Status -NoNewLine "$Text`r" $Frames[$Frame] -C $Color
         Start-Sleep 0.04
     }
-    Write-Host -NoNewLine "$(if ($Job.Error) {Write-Success $Text} else {Write-Fail $Text})"
+    if ($Job.Error) { Write-Fail $Text } else { Write-Success $Text }
     [Console]::CursorVisible = $CursorVisible
 
     $Result = Receive-Job $Job
@@ -155,7 +155,7 @@ function Write-Status(
     [switch]
     $NoNewLine
 ) {
-    Write-Host "$(Format-Color $Status -F $Color) $Text" -NoNewLine:$NoNewLine
+    Write-Host "$(Format-Color $Status -F $Color) $Text" -NoNewline:$NoNewLine
 }
 
 <#
