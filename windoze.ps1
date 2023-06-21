@@ -17,6 +17,7 @@ Param(
 )
 
 $env:WINDOZE_HIGHLIGHT ??= 12
+$env:WINDOZE_SECONDARY ??= 8
 $env:WINDOZE_CONFIRM ??= 10
 $env:WINDOZE_REJECT ??= 9
 
@@ -34,10 +35,10 @@ function Ansi(
     [char]
     $Command,
     [Parameter(Position = 1)]
-    [ushort[]]
+    [string[]]
     $Arguments = @()
 ) {
-    return $Arguments.Length ? "$([char]27)[$($Arguments -join ";")$Command" : ""
+    return "$([char]27)[$($Arguments -join ";")$Command"
 }
 
 <#
@@ -68,6 +69,21 @@ function Color(
         $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() })
     )
     return $Arguments.Length ? "$(Ansi "m" $Arguments)$Text$(Ansi "m" 0)" : "$Text"
+}
+
+
+<#
+.DESCRIPTION
+    Removes the previous lines.
+.PARAMETER Amount
+    The amount of lines to remove.
+    Defaults to 1.
+#>
+function Remove-Lines(
+    [Parameter(Position = 0)]
+    $Amount = 1
+) {
+    Write-Host -NoNewline "$(Ansi "F" $Amount)$(Ansi "J")"
 }
 
 <#
@@ -145,10 +161,19 @@ function Status(
     Highlight a text.
 .PARAMETER Text
     The text to highlight.
-    Defaults to $env:WINDOZE_HIGHLIGHT.
 #>
 function Highlight([Parameter(Mandatory, Position = 0, ValueFromPipeline)][string]$Text) {
     return Color $Text -F $env:WINDOZE_HIGHLIGHT
+}
+
+<#
+.DESCRIPTION
+    Make a text secondary.
+.PARAMETER Text
+    The text to make secondary.
+#>
+function Secondary([Parameter(Mandatory, Position = 0, ValueFromPipeline)][string]$Text) {
+    return Color $Text -F $env:WINDOZE_SECONDARY
 }
 
 <#
@@ -204,11 +229,12 @@ function Input(
     $Prompt,
     [Alias("S")]
     [string]
-    $Separator = (Color "`n> " -F $env:WINDOZE_HIGHLIGHT)
+    $Separator = "`n> "
 ) {
-    Write-Host -NoNewline "$Prompt$Separator"
+    $Text = "$(Secondary $Prompt)$(Highlight $Separator)"
+    Write-Host -NoNewline $Text
     $Inp = Read-Host
-    Write-Host -NoNewline "$R$(Ansi "F")$R"
+    Remove-Lines ("$Text$Inp" -split "\n").Length
     return $Inp
 }
 
