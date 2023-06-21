@@ -13,7 +13,7 @@ Param(
     [Parameter(Position = 0)]
     [Alias("S")]
     [string]
-    $Source
+    $Source = $null
 )
 
 $env:WINDOZE_HIGHLIGHT ??= 12
@@ -245,8 +245,25 @@ function Read-Input(
 }
 
 # Print welcome screen.
-Write-Output "`nWelcome to $(Format-Highlight "Windoze") image creator!`n"
-Read-Input "Enter something"
-Write-Spin "Processing..." { Start-Sleep 1; throw "ono" }
-Write-Success "Done"
-Write-Fail "Error"
+Write-Output "`nWelcome to the $(Format-Highlight "Windoze") image creator!`n"
+
+do {
+    if (-Not $Source) {
+        $Source = Read-Input "Enter the path of the image that should be altered."
+    }
+    $Source = $Source -replace '^"|"$'
+
+    if (-Not (Test-Path $Source -PathType Leaf)) {
+        Write-Fail "The provided path does not contain a file."
+        $Source = $null
+    }
+} until ($Source)
+
+[ciminstance]$Disk = Write-Spin "Mounting image $(Format-Highlight $Source)." {
+    Mount-DiskImage -ImagePath $using:Source
+}
+$Volume = Get-Volume -DiskImage $Disk
+
+Write-Spin "Dismounting disk $(Format-Highlight $Volume.DriveLetter)." {
+    Dismount-DiskImage -ImagePath $using:Source
+} | Out-Null
