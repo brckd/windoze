@@ -266,6 +266,11 @@ do {
     Mount-DiskImage -ImagePath $using:Source
 }
 $Volume = Get-Volume -DiskImage $Disk
+$Root = "$($Volume.DriveLetter):"
+
+if (-Not (Test-Path "$Root/sources/boot.wim") -or -Not (Test-Path "$Root/sources/install.wim") ) {
+    Write-Fail "Couldn't find Windows installation files."
+}
 
 Write-Spin "Dismounting disk $(Format-Highlight $Volume.DriveLetter)." {
     Dismount-DiskImage -ImagePath $using:Source
