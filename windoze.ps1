@@ -244,6 +244,7 @@ function Read-Input(
     return $Inp
 }
 
+
 # Print welcome screen.
 Write-Output "`nWelcome to the $(Format-Highlight "Windoze") image creator!`n"
 
@@ -266,11 +267,18 @@ do {
 }
 $Volume = Get-Volume -DiskImage $Disk
 $Root = "$($Volume.DriveLetter):"
+$BootFile = Join-Path -Path $Root -ChildPath "sources/boot.wim"
+$ImageFile = Join-Path -Path $Root -ChildPath "sources/install.wim"
 
-if (-Not (Test-Path "$Root/sources/boot.wim") -or -Not (Test-Path "$Root/sources/install.wim") ) {
-    Write-Fail "Couldn't find Windows installation files."
+# Check WIM files.
+if (-Not (Test-Path $BootFile)) {
+    Write-Fail "Couldn't find Windows boot file $(Format-Secondary $BootFile)."
+}
+if (-Not (Test-Path $ImageFile) ) {
+    Write-Fail "Couldn't find Windows installation file $(Format-Secondary $ImageFile)."
 }
 
-Write-Spin "Dismounting disk $(Format-Highlight $Volume.DriveLetter)." {
+# Dismount drive.
+Write-Spin "Dismounting drive $(Format-Highlight $Volume.DriveLetter)." {
     Dismount-DiskImage -ImagePath $using:Source
 } | Out-Null
