@@ -16,6 +16,7 @@ Param(
     $Source = $null
 )
 
+$ErrorActionPreference = "Stop"
 $env:WINDOZE_HIGHLIGHT ??= 12
 $env:WINDOZE_SECONDARY ??= 8
 $env:WINDOZE_SUCCESS ??= 10
@@ -247,6 +248,7 @@ function Read-Input(
 # Print welcome screen.
 Write-Output "`nWelcome to the $(Format-Highlight "Windoze") image creator!`n"
 
+# Get source.
 do {
     if (-Not $Source) {
         $Source = Read-Input "Enter the path of the image that should be altered."
@@ -259,6 +261,7 @@ do {
     }
 } until ($Source)
 
+# Mount source.
 [ciminstance]$Disk = Write-Spin "Mounting image $(Format-Highlight $Source)." {
     Mount-DiskImage -ImagePath $using:Source
 }
