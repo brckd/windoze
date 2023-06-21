@@ -30,7 +30,7 @@ $env:WINDOZE_REJECT ??= 9
     The command to use.
     Defaults to Select Graphic Rendition.
 #>
-function Ansi(
+function Format-Ansi(
     [Parameter(Mandatory, Position = 0)]
     [char]
     $Command,
@@ -51,7 +51,7 @@ function Ansi(
 .PARAMETER Background
     The color of the background.
 #>
-function Color(
+function Format-Color(
     [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
     [string]
     $Text,
@@ -68,7 +68,7 @@ function Color(
         $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() }) + `
         $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() })
     )
-    return $Arguments.Length ? "$(Ansi "m" $Arguments)$Text$(Ansi "m" 0)" : "$Text"
+    return $Arguments.Length ? "$(Format-Ansi "m" $Arguments)$Text$(Format-Ansi "m" 0)" : "$Text"
 }
 
 
@@ -83,7 +83,7 @@ function Remove-Lines(
     [Parameter(Position = 0)]
     $Amount = 1
 ) {
-    Write-Host -NoNewline "$(Ansi "F" $Amount)$(Ansi "J")"
+    Write-Host -NoNewline "$(Format-Ansi "F" $Amount)$(Format-Ansi "J")"
 }
 
 <#
@@ -97,7 +97,7 @@ function Remove-Lines(
     The highlight color of the spinner.
     Defaults to $env:WINDOZE_HIGHLIGHT.
 #>
-function Spin(
+function Write-Spin(
     [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
     [string]
     $Text,
@@ -117,10 +117,10 @@ function Spin(
     [Console]::CursorVisible = $false
     while ($Job.State -eq "Running") {
         $Frame = ($Frame + 1) % $Frames.Length
-        Write-Host -NoNewline "`r$(Status $Text $Frames[$Frame] -C $Color)"
+        Write-Status -NoNewLine "$Text`r" $Frames[$Frame] -C $Color
         Start-Sleep 0.04
     }
-    Write-Host "`r$(if ($Job.Error) {Success $Text} else {Fail $Text})"
+    Write-Host -NoNewLine "$(if ($Job.Error) {Write-Success $Text} else {Write-Fail $Text})"
     [Console]::CursorVisible = $CursorVisible
 
     $Result = Receive-Job $Job
@@ -141,7 +141,7 @@ function Spin(
     The color to use for the status.
     Defaults to $env:WINDOZE_HIGHLIGHT.
 #>
-function Status(
+function Write-Status(
     [Parameter(Mandatory, Position = 0)]
     [string]
     $Text,
@@ -151,9 +151,11 @@ function Status(
     $Status,
     [Alias("C")]
     [ushort]
-    $Color = $env:WINDOZE_HIGHLIGHT
+    $Color = $env:WINDOZE_HIGHLIGHT,
+    [switch]
+    $NoNewLine
 ) {
-    return "$(Color $Status -F $Color) $Text"
+    Write-Host "$(Format-Color $Status -F $Color) $Text" -NoNewLine:$NoNewLine
 }
 
 <#
@@ -162,8 +164,8 @@ function Status(
 .PARAMETER Text
     The text to highlight.
 #>
-function Highlight([Parameter(Mandatory, Position = 0, ValueFromPipeline)][string]$Text) {
-    return Color $Text -F $env:WINDOZE_HIGHLIGHT
+function Format-Highlight([Parameter(Mandatory, Position = 0, ValueFromPipeline)][string]$Text) {
+    return Format-Color $Text -F $env:WINDOZE_HIGHLIGHT
 }
 
 <#
@@ -172,8 +174,8 @@ function Highlight([Parameter(Mandatory, Position = 0, ValueFromPipeline)][strin
 .PARAMETER Text
     The text to make secondary.
 #>
-function Secondary([Parameter(Mandatory, Position = 0, ValueFromPipeline)][string]$Text) {
-    return Color $Text -F $env:WINDOZE_SECONDARY
+function Format-Secondary([Parameter(Mandatory, Position = 0, ValueFromPipeline)][string]$Text) {
+    return Format-Color $Text -F $env:WINDOZE_SECONDARY
 }
 
 <#
@@ -185,15 +187,17 @@ function Secondary([Parameter(Mandatory, Position = 0, ValueFromPipeline)][strin
     The color to use for the success icon.
     Defaults to $env:WINDOZE_SUCCESS.
 #>
-function Success(
+function Write-Success(
     [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
     [string]
     $Text,
     [Alias("C")]
     [ushort]
-    $Color = $env:WINDOZE_SUCCESS
+    $Color = $env:WINDOZE_SUCCESS,
+    [switch]
+    $NoNewLine
 ) {
-    return Status $Text "✔" -C $Color
+    Write-Status $Text "✔" -C $Color -NoNewLine:$NoNewLine
 }
 
 <#
@@ -205,15 +209,17 @@ function Success(
     The color to use for the failure icon.
     Defaults to $env:WINDOZE_FAIL.
 #>
-function Fail(
+function Write-Fail(
     [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
     [string]
     $Text,
     [Alias("C")]
     [ushort]
-    $Color = $env:WINDOZE_FAIL
+    $Color = $env:WINDOZE_FAIL,
+    [switch]
+    $NoNewLine
 ) {
-    return Status $Text "✘" -C $Color
+    Write-Status $Text "✘" -C $Color -NoNewLine:$NoNewLine
 }
 
 <#
@@ -224,14 +230,14 @@ function Fail(
 .PARAMETER Placeholder
     The placeholder to show in an empty input.
 #>
-function Input(
+function Read-Input(
     [Parameter(Mandatory, Position = 0)]
     $Prompt,
     [Alias("S")]
     [string]
     $Separator = "`n> "
 ) {
-    $Text = "$(Secondary $Prompt)$(Highlight $Separator)"
+    $Text = "$(Format-Secondary $Prompt)$(Format-Highlight $Separator)"
     Write-Host -NoNewline $Text
     $Inp = Read-Host
     Remove-Lines ("$Text$Inp" -split "\n").Length
@@ -239,8 +245,8 @@ function Input(
 }
 
 # Print welcome screen.
-Write-Output "`nWelcome to $(Highlight "Windoze") image creator!`n"
-Input "Enter something"
-Spin "Processing..." { Start-Sleep 1; throw "ono" }
-Success "Done"
-Fail "Error"
+Write-Output "`nWelcome to $(Format-Highlight "Windoze") image creator!`n"
+Read-Input "Enter something"
+Write-Spin "Processing..." { Start-Sleep 1; throw "ono" }
+Write-Success "Done"
+Write-Fail "Error"
