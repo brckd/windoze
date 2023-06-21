@@ -97,14 +97,15 @@ function Spin(
     $Frame = 0
     $Job = Start-Job -ScriptBlock $Script
 
-    [console]::CursorVisible = $false
+    $CursorVisible = [Console]::CursorVisible
+    [Console]::CursorVisible = $false
     while ($Job.State -eq "Running") {
         $Frame = ($Frame + 1) % $Frames.Length
         Write-Host -NoNewline "`r$(Status $Text $Frames[$Frame] -C $Color)"
         Start-Sleep 0.04
     }
     Write-Host "`r$(if ($Job.Error) {Success $Text} else {Fail $Text})"
-    [console]::CursorVisible = $true
+    [Console]::CursorVisible = $CursorVisible
 
     $Result = Receive-Job $Job
     Remove-Job -Job $Job
