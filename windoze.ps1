@@ -16,7 +16,6 @@ Param(
     $Source = $null
 )
 
-$ErrorActionPreference = "Stop"
 $env:WINDOZE_HIGHLIGHT ??= 12
 $env:WINDOZE_SECONDARY ??= 8
 $env:WINDOZE_SUCCESS ??= 10
