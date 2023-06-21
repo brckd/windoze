@@ -103,9 +103,9 @@ function Spin(
         Write-Host -NoNewline "`r$(Status $Text $Frames[$Frame] -C $Color)"
         Start-Sleep 0.04
     }
-    Write-Host "`r$(if ($Job.Error) {Confirm $Text} else {Reject $Text})"
+    Write-Host "`r$(if ($Job.Error) {Success $Text} else {Fail $Text})"
     [console]::CursorVisible = $true
-    
+
     $Result = Receive-Job $Job
     Remove-Job -Job $Job
     if ($Job.Error) { throw $Job.Error }
@@ -152,46 +152,68 @@ function Highlight([Parameter(Mandatory, Position = 0, ValueFromPipeline)][strin
 
 <#
 .DESCRIPTION
-    Format a confirmation.
+    Format a success.
 .PARAMETER Text
-    The confirmation text.
+    The success text.
 .PARAMETER Color
-    The color to use for the confirmation icon.
-    Defaults to $env:WINDOZE_CONFIRM.
+    The color to use for the success icon.
+    Defaults to $env:WINDOZE_SUCCESS.
 #>
-function Confirm(
+function Success(
     [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
     [string]
     $Text,
     [Alias("C")]
     [ushort]
-    $Color = $env:WINDOZE_CONFIRM
+    $Color = $env:WINDOZE_SUCCESS
 ) {
     return Status $Text "✔" -C $Color
 }
 
 <#
 .DESCRIPTION
-    Format a rejection.
+    Format a failure.
 .PARAMETER Text
-    The rejection text.
+    The failure text.
 .PARAMETER Color
-    The color to use for the rejection icon.
-    Defaults to $env:WINDOZE_REJECT.
+    The color to use for the failure icon.
+    Defaults to $env:WINDOZE_FAIL.
 #>
-function Reject(
+function Fail(
     [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
     [string]
     $Text,
     [Alias("C")]
     [ushort]
-    $Color = $env:WINDOZE_REJECT
+    $Color = $env:WINDOZE_FAIL
 ) {
     return Status $Text "✘" -C $Color
 }
 
+<#
+.DESCRIPTION
+    Prompt an input from the console.
+.PARAMETER Prompt
+    The prompt to display.
+.PARAMETER Placeholder
+    The placeholder to show in an empty input.
+#>
+function Input(
+    [Parameter(Mandatory, Position = 0)]
+    $Prompt,
+    [Alias("S")]
+    [string]
+    $Separator = (Color "`n> " -F $env:WINDOZE_HIGHLIGHT)
+) {
+    Write-Host -NoNewline "$Prompt$Separator"
+    $Inp = Read-Host
+    Write-Host -NoNewline "$R$(Ansi "F")$R"
+    return $Inp
+}
+
 # Print welcome screen.
 Write-Output "`nWelcome to $(Highlight "Windoze") image creator!`n"
+Input "Enter something"
 Spin "Processing..." { Start-Sleep 1; throw "ono" }
-Confirm "Done"
-Reject "Error"
+Success "Done"
+Fail "Error"
