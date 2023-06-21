@@ -30,12 +30,12 @@ $env:WINDOZE_REJECT ??= 9
     Defaults to Select Graphic Rendition.
 #>
 function Ansi(
-    [Parameter(ValueFromPipeline, Position = 0)]
-    [ushort[]]
-    $Arguments,
-    [Alias("C")]
+    [Parameter(Mandatory, Position = 0)]
     [char]
-    $Command = "m"
+    $Command,
+    [Parameter(Position = 1)]
+    [ushort[]]
+    $Arguments = @()
 ) {
     return $Arguments.Length ? "$([char]27)[$($Arguments -join ";")$Command" : ""
 }
@@ -67,7 +67,7 @@ function Color(
         $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() }) + `
         $(if ($Foreground -is [ushort]) { 38, 5, $Foreground } else { @() })
     )
-    return $Arguments.Length ? "$(Ansi $Arguments)$Text$(Ansi 0)" : "$Text"
+    return $Arguments.Length ? "$(Ansi "m" $Arguments)$Text$(Ansi "m" 0)" : "$Text"
 }
 
 <#
