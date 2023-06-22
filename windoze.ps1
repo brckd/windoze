@@ -5,15 +5,22 @@
     Glamorous shell script to create your very own Windows image.
 .PARAMETER Source
     Path of the image that should be altered.
-    If not specified, will be prompted later.
+    If not specified, will be prompted interactively.
+.PARAMETER Index
+    The index of the Windows version that should be altered
+    If not specified, will be prompted interactively.
 .EXAMPLE
     ./windoze.ps1 -S ./my/image.iso
 #>
 Param(
     [Parameter(Position = 0)]
-    [Alias("S")]
+    [Alias("S", "Image", "Input")]
     [string]
-    $Source = $null
+    $Source = $null,
+    [Parameter(ParameterSetName)]
+    [Alias("I", "Index", "Version")]
+    [int]
+    $ImageIndex = -1
 )
 
 $env:WINDOZE_HIGHLIGHT ??= 12
@@ -245,7 +252,6 @@ function Read-Input(
     return $Inp
 }
 
-
 <#
 .DESCRIPTION
     Prompt a choice from the console.
@@ -321,18 +327,41 @@ do {
 }
 $Volume = Get-Volume -DiskImage $Disk
 $Root = "$($Volume.DriveLetter):"
-$BootFile = Join-Path -Path $Root -ChildPath "sources/boot.wim"
-$ImageFile = Join-Path -Path $Root -ChildPath "sources/install.wim"
+$BootPath = Join-Path -Path $Root -ChildPath "sources/boot.wim"
+$ImagePath = Join-Path -Path $Root -ChildPath "sources/install.wim"
+$ImageDir = Join-Path -Path $PWD -ChildPath "image"
 
 # Check WIM files.
-if (-Not (Test-Path $BootFile)) {
-    Write-Fail "Couldn't find Windows boot file $(Format-Secondary $BootFile)."
+if (-Not (Test-Path $BootPath)) {
+    Write-Fail "Couldn't find Windows boot file $(Format-Secondary $BootPath)."
 }
-if (-Not (Test-Path $ImageFile) ) {
-    Write-Fail "Couldn't find Windows installation file $(Format-Secondary $ImageFile)."
+if (-Not (Test-Path $ImagePath) ) {
+    Write-Fail "Couldn't find Windows installation file $(Format-Secondary $ImagePath)."
 }
+
+# Get Windows image.
+$ImageInfo = Write-Spin "Receiving information about the image." {
+    Get-WindowsImage -ImagePath $using:ImagePath
+}
+$ImageNames = ($ImageInfo | ForEach-Object { $_.ImageName })
+$ImageIndexes = ($ImageInfo | ForEach-Object { $_.ImageIndex })
+
+if ($ImageIndex -lt 0) {
+    $ImageIndex = Read-Choice "Select an image" $ImageNames $ImageIndexes
+}
+
+$ImageName = $ImageNames[$ImageIndexes.IndexOf($ImageIndex)]
+
+# Mount Windows image.
+Write-Spin "Clearing $(Format-Highlight "image directory")." {
+    Remove-Item $using:ImageDir
+} | Out-Null
+
+Write-Spin "Mounting $(Format-Highlight $ImageName)." {
+    Mount-WindowsImage -Path $using:ImageDir -ImagePath $using:ImagePath -Index $using:ImageIndex -ReadOnly
+} | Out-Null
 
 # Dismount drive.
 Write-Spin "Dismounting drive $(Format-Highlight $Volume.DriveLetter)." {
-    Dismount-DiskImage -ImagePath $using:Source
+    Dismount-DiskImage -InputObject $using:Disk
 } | Out-Null
