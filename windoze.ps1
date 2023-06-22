@@ -232,6 +232,7 @@ function Write-Fail(
 #>
 function Read-Input(
     [Parameter(Mandatory, Position = 0)]
+    [string]
     $Prompt,
     [Alias("S")]
     [string]
@@ -242,6 +243,59 @@ function Read-Input(
     $Inp = Read-Host
     Remove-Lines ("$Text$Inp" -split "\n").Length
     return $Inp
+}
+
+
+<#
+.DESCRIPTION
+    Prompt a choice from the console.
+.PARAMETER Prompt
+    The prompt to display.
+.PARAMETER Choices
+    The choices to give.
+.PARAMETER Values
+    The values to return for the selected choices.
+#>
+function Read-Choice(
+    [Parameter(Mandatory, Position = 0)]
+    [string]
+    $Prompt,
+    [Parameter(Mandatory, Position = 1)]
+    [string[]]
+    $Choices,
+    [Parameter(Position = 2)]
+    [string[]]
+    $Values = $Choices
+) {
+    $Selected = 0
+    
+    $CursorVisible = [Console]::CursorVisible
+    [Console]::CursorVisible = $false
+    do {
+        $Text = Format-Secondary $Prompt
+        for ($I = 0; $I -lt $Choices.Length; $I++) {
+            if ($I -eq $Selected) {
+                $Text += Format-Highlight "`n> $($Choices[$I])"
+            }
+            else {
+                $Text += "`n  $($Choices[$I])" 
+            }
+        }
+        Write-Host $Text
+
+        $Key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        switch ($Key.VirtualKeyCode) {
+            0x26 { $Selected-- }
+            0x28 { $Selected++ }
+            0x0D { $Choice = $Values[$Selected] }
+            0x43 { if ($Key.ControlKeyState) { break } }
+        }
+        $Selected = ($Selected + $Choices.Length) % $Choices.Length
+        Remove-Lines ($Text -split "\n").Length
+    } while (-Not $Choice)
+    [Console]::CursorVisible = $CursorVisible
+
+    return $Choice
 }
 
 
