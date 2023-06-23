@@ -331,13 +331,13 @@ do {
 $SourceName = Split-Path $Source -Leaf
 
 # Mount source.
-[ciminstance]$MountDisk = Write-Spin "Mounting image $(Format-Highlight $Source)." {
+$SourceDisk = Write-Spin "Mounting source $(Format-Highlight $Source)." {
     Mount-DiskImage -ImagePath $using:Source
 }
-$MountVolume = Get-Volume -DiskImage $MountDisk
-$MountDir = "$($MountVolume.DriveLetter):"
-$BootPath = Join-Path -Path $MountDir -ChildPath "sources/boot.wim"
-$ImagePath = Join-Path -Path $MountDir -ChildPath "sources/install.wim"
+$SourceVolume = Get-Volume -DiskImage $SourceDisk
+$SourceDir = "$($SourceVolume.DriveLetter):"
+$BootPath = Join-Path $SourceDir "sources/boot.wim"
+$ImagePath = Join-Path $SourceDir "sources/install.wim"
 
 # Check WIM files.
 if (-Not (Test-Path $BootPath)) {
@@ -346,6 +346,18 @@ if (-Not (Test-Path $BootPath)) {
 if (-Not (Test-Path $ImagePath) ) {
     Write-Fail "Couldn't find Windows installation file $(Format-Secondary $ImagePath)."
 }
+
+# Copy source.
+$SourceEdit = Join-Path $PWD "disc-images" $SourceName
+$ImagePath = Join-Path $SourceEdit "sources/install.wim"
+Write-Spin "Copying source to $(Format-Highlight $SourceEdit)" {
+    xcopy.exe /S /E /I /H /R /Y /J $SourceDir "$SourceEdit"
+} | Out-Null
+
+# Dismount source.
+Write-Spin "Dismounting source $(Format-Highlight $SourceVolume.DriveLetter)." {
+    Dismount-DiskImage -InputObject $using:SourceDisk
+} | Out-Null
 
 # Get Windows image.
 if (-Not $ImageName) {
@@ -364,18 +376,13 @@ if (-Not $ImageName) {
 }
 
 # Mount Windows image.
-$EditDir = Join-Path $PWD "edits" $SourceName $ImageName
-if (Test-Path (Join-Path $EditDir "*")) { Write-Success "Using existing edit directory $(Format-Highlight $EditDir)." }
+$ImageEdit = Join-Path $PWD "edits" $SourceName $ImageName
+if (Test-Path (Join-Path $ImageEdit "*")) { Write-Success "Using existing edit directory $(Format-Highlight $ImageEdit)." }
 else {
-    Write-Spin "Creating edit directory $(Format-Highlight $EditDir)." {
-        New-Item -Path $using:EditDir -ItemType "Directory"
+    Write-Spin "Creating edit directory $(Format-Highlight $ImageEdit)." {
+        New-Item -Path $using:ImageEdit -ItemType "Directory"
     } | Out-Null
     Write-Spin "Mounting edit of $(Format-Highlight $ImageName)." {
-        Mount-WindowsImage -Path $using:EditDir -ImagePath $using:ImagePath -Index $using:ImageIndex -ReadOnly
+        Mount-WindowsImage -Path $using:ImageEdit -ImagePath $using:ImagePath -Index $using:ImageIndex
     } | Out-Null
 }
-
-# Dismount drive.
-Write-Spin "Dismounting drive $(Format-Highlight $MountVolume.DriveLetter)." {
-    Dismount-DiskImage -InputObject $using:MountDisk
-} | Out-Null
