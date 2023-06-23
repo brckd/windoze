@@ -328,16 +328,16 @@ do {
         $Source = $null
     }
 } until ($Source)
+$SourceName = Split-Path $Source -Leaf
 
 # Mount source.
-[ciminstance]$Disk = Write-Spin "Mounting image $(Format-Highlight $Source)." {
+[ciminstance]$MountDisk = Write-Spin "Mounting image $(Format-Highlight $Source)." {
     Mount-DiskImage -ImagePath $using:Source
 }
-$Volume = Get-Volume -DiskImage $Disk
-$ImageDir = "$($Volume.DriveLetter):"
-$BootPath = Join-Path -Path $ImageDir -ChildPath "sources/boot.wim"
-$ImagePath = Join-Path -Path $ImageDir -ChildPath "sources/install.wim"
-$ImageDir = Join-Path -Path $PWD -ChildPath "images" -AdditionalChildPath (Split-Path $Source  -Leaf)
+$MountVolume = Get-Volume -DiskImage $MountDisk
+$MountDir = "$($MountVolume.DriveLetter):"
+$BootPath = Join-Path -Path $MountDir -ChildPath "sources/boot.wim"
+$ImagePath = Join-Path -Path $MountDir -ChildPath "sources/install.wim"
 
 # Check WIM files.
 if (-Not (Test-Path $BootPath)) {
@@ -364,11 +364,18 @@ if (-Not $ImageName) {
 }
 
 # Mount Windows image.
-Write-Spin "Mounting $(Format-Highlight $ImageName)." {
-    Mount-WindowsImage -Path $using:ImageDir -ImagePath $using:ImagePath -Index $using:ImageIndex -ReadOnly
-} | Out-Null
+$EditDir = Join-Path $PWD "edits" $SourceName $ImageName
+if (Test-Path (Join-Path $EditDir "*")) { Write-Success "Using existing edit directory $(Format-Highlight $EditDir)." }
+else {
+    Write-Spin "Creating edit directory $(Format-Highlight $EditDir)." {
+        New-Item -Path $using:EditDir -ItemType "Directory"
+    } | Out-Null
+    Write-Spin "Mounting edit of $(Format-Highlight $ImageName)." {
+        Mount-WindowsImage -Path $using:EditDir -ImagePath $using:ImagePath -Index $using:ImageIndex -ReadOnly
+    } | Out-Null
+}
 
 # Dismount drive.
-Write-Spin "Dismounting drive $(Format-Highlight $Volume.DriveLetter)." {
-    Dismount-DiskImage -InputObject $using:Disk
+Write-Spin "Dismounting drive $(Format-Highlight $MountVolume.DriveLetter)." {
+    Dismount-DiskImage -InputObject $using:MountDisk
 } | Out-Null
