@@ -7,20 +7,28 @@
     Path of the image that should be altered.
     If not specified, will be prompted interactively.
 .PARAMETER Index
-    The index of the Windows version that should be altered
+    The index of the Windows image that should be altered
+    If not specified, will be prompted interactively.
+.PARAMETER Name
+    The name of the Windows image that should be altered
     If not specified, will be prompted interactively.
 .EXAMPLE
-    ./windoze.ps1 -S ./my/image.iso
+    ./windoze.ps1 -s ./my/image.iso -n "Windows 11 Home"
 #>
+[CmdletBinding(DefaultParametersetName = "Default")]
 Param(
     [Parameter(Position = 0)]
     [Alias("S", "Image", "Input")]
     [string]
     $Source = $null,
-    [Parameter(ParameterSetName)]
-    [Alias("I", "Index", "Version")]
-    [int]
-    $ImageIndex = -1
+    [Parameter(ParameterSetName = "ByIndex")]
+    [Alias("I", "Index")]
+    [uint]
+    $ImageIndex = $null,
+    [Parameter(ParameterSetName = "ByName")]
+    [Alias("N", "Name")]
+    [string]
+    $ImageName = $null
 )
 
 $env:WINDOZE_HIGHLIGHT ??= 12
@@ -326,10 +334,10 @@ do {
     Mount-DiskImage -ImagePath $using:Source
 }
 $Volume = Get-Volume -DiskImage $Disk
-$Root = "$($Volume.DriveLetter):"
-$BootPath = Join-Path -Path $Root -ChildPath "sources/boot.wim"
-$ImagePath = Join-Path -Path $Root -ChildPath "sources/install.wim"
-$ImageDir = Join-Path -Path $PWD -ChildPath "image"
+$ImageDir = "$($Volume.DriveLetter):"
+$BootPath = Join-Path -Path $ImageDir -ChildPath "sources/boot.wim"
+$ImagePath = Join-Path -Path $ImageDir -ChildPath "sources/install.wim"
+$ImageDir = Join-Path -Path $PWD -ChildPath "images" -AdditionalChildPath (Split-Path $Source  -Leaf)
 
 # Check WIM files.
 if (-Not (Test-Path $BootPath)) {
@@ -340,23 +348,22 @@ if (-Not (Test-Path $ImagePath) ) {
 }
 
 # Get Windows image.
-$ImageInfo = Write-Spin "Receiving information about the image." {
-    Get-WindowsImage -ImagePath $using:ImagePath
-}
-$ImageNames = ($ImageInfo | ForEach-Object { $_.ImageName })
-$ImageIndexes = ($ImageInfo | ForEach-Object { $_.ImageIndex })
+if (-Not $ImageName) {
+    $ImageInfo = Write-Spin "Receiving information about the image." {
+        Get-WindowsImage -ImagePath $using:ImagePath
+    }
+    $ImageNames = ($ImageInfo | ForEach-Object { $_.ImageName })
 
-if ($ImageIndex -lt 0) {
-    $ImageIndex = Read-Choice "Select an image" $ImageNames $ImageIndexes
+    if ($ImageIndex) {
+        $ImageIndexes = ($ImageInfo | ForEach-Object { $_.ImageIndex })
+        $ImageName = $ImageNames[$ImageIndexes.IndexOf($ImageIndex)]
+    }
+    else {
+        $ImageName = Read-Choice "Select an image" $ImageNames
+    }
 }
-
-$ImageName = $ImageNames[$ImageIndexes.IndexOf($ImageIndex)]
 
 # Mount Windows image.
-Write-Spin "Clearing $(Format-Highlight "image directory")." {
-    Remove-Item $using:ImageDir
-} | Out-Null
-
 Write-Spin "Mounting $(Format-Highlight $ImageName)." {
     Mount-WindowsImage -Path $using:ImageDir -ImagePath $using:ImagePath -Index $using:ImageIndex -ReadOnly
 } | Out-Null
