@@ -35,6 +35,11 @@ $env:WINDOZE_HIGHLIGHT ??= 12
 $env:WINDOZE_SECONDARY ??= 8
 $env:WINDOZE_SUCCESS ??= 10
 $env:WINDOZE_FAIL ??= 9
+$env:WINDOZE_HEIGHT ??= 10
+$env:WINDOZE_EMPTY = "  "
+$env:WINDOZE_CURSOR ??= "> "
+$env:WINDOZE_SELECT ??= "◉ "
+$env:WINDOZE_UNSELECT ??= "○ "
 
 <#
 .DESCRIPTION
@@ -269,9 +274,11 @@ function Read-Input(
     The choices to give.
 .PARAMETER Values
     The values to return for the selected choices.
-.PARAMETER Limit
-    The amount of choices to display at once.
-    Defaults to 5.
+.PARAMETER Selected
+    Values of preselected options.
+    Defaults to none.
+.PARAMETER Multiple
+    Whether to select multiple options.
 #>
 function Read-Choice(
     [Parameter(Mandatory, Position = 0)]
@@ -282,29 +289,41 @@ function Read-Choice(
     $Choices,
     [Parameter(Position = 2)]
     $Values = $Choices,
-    [Alias("L")]
-    [uint]
-    $Limit = 10
+    [Alias("S")]
+    [array]
+    $Selected = @(),
+    [Alias("M")]
+    [switch]
+    $Multiple
 ) {
-    $Pages = [int][Math]::Ceiling($Choices.Length / $Limit)
+    $Set = @{}
+    foreach ($Select in $Selected) {
+        $Set[$Select] = $true
+    }
+    $Pages = [int][Math]::Ceiling($Choices.Length / $env:WINDOZE_HEIGHT)
     $Page = 0
-    $Position = 0
+    $Position = if (-Not $Multiple -and $Selected.Length) { $Selected[0] } else { 0 }
     
     $CursorVisible = [Console]::CursorVisible
     [Console]::CursorVisible = $false
     do {
-        $Page = [math]::Floor($Position / $Limit)
-        $Offset = $Page * $Limit
+        $Value = $Values[$Position]
+        $Page = [math]::Floor($Position / $env:WINDOZE_HEIGHT)
+        $Offset = $Page * $env:WINDOZE_HEIGHT
         $Text = Format-Secondary $Prompt
-        for ($I = $Offset; $I -lt $Offset + $Limit -and $I -lt $Choices.Length; $I++) {
-            if ($I -eq $Position) {
-                $Text += Format-Highlight "`n> $($Choices[$I])"
+        for ($I = $Offset; $I -lt $Offset + $env:WINDOZE_HEIGHT -and $I -lt $Choices.Length; $I++) {
+            $Cursor = if ($I -eq $Position) { $env:WINDOZE_CURSOR } else { $env:WINDOZE_EMPTY }
+            $Ballot = if (-Not $Multiple) { "" }
+            elseif ($Set.ContainsKey($Values[$I])) { $env:WINDOZE_SELECT }
+            else { $env:WINDOZE_UNSELECT }
+            if ($I -eq $Position -or $Set.ContainsKey($Values[$I])) {
+                $Text += Format-Highlight "`n$Cursor$Ballot$($Choices[$I])"
             }
             else {
-                $Text += "`n  $($Choices[$I])" 
+                $Text += "`n$Cursor$Ballot$($Choices[$I])" 
             }
         }
-        if ($Choices.Length -gt $Limit) {
+        if ($Choices.Length -gt $env:WINDOZE_HEIGHT) {
             $Dots = "•" * $Pages -replace "^(.{$Page}).", "`$1$(Format-Highlight "•")"
             $Text += "`n`n  $Dots"
         }
@@ -312,19 +331,24 @@ function Read-Choice(
 
         $Key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         switch ($Key.VirtualKeyCode) {
+            { $_ -eq 0x0D -or ($_ -eq 0x43 -and $Key.ControlKeyState) } { $Exit = $true }
+            { 0x09, 0x20 -contains $_ } {
+                if (-Not $Multiple) { $Exit = $true }
+                elseif ($Set.ContainsKey($Value)) { $Set.Remove($Value) }
+                else { $Set[$Value] = $true }
+            }
             0x26 { $Position-- }
             0x28 { $Position++ }
-            0x25 { $Position = ($Page - 1) * $Limit }
-            0x27 { $Position = ($Page + 1) * $Limit }
-            0x0D { $Choice = $Values[$Position] }
-            0x43 { if ($Key.ControlKeyState) { break } }
+            0x25 { $Position = ($Page - 1) * $env:WINDOZE_HEIGHT }
+            0x27 { $Position = ($Page + 1) * $env:WINDOZE_HEIGHT }
         }
         $Position = ($Position + $Choices.Length) % $Choices.Length
         Remove-Lines ($Text -split "\n").Length
-    } while (-Not $Choice)
+    } until ($Exit)
     [Console]::CursorVisible = $CursorVisible
 
-    return $Choice
+    if (-Not $Multiple) { return $Choices[$Position] }
+    else { return $Set.Keys }
 }
 
 
