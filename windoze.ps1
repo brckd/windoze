@@ -269,6 +269,9 @@ function Read-Input(
     The choices to give.
 .PARAMETER Values
     The values to return for the selected choices.
+.PARAMETER Limit
+    The amount of choices to display at once.
+    Defaults to 5.
 #>
 function Read-Choice(
     [Parameter(Mandatory, Position = 0)]
@@ -278,32 +281,45 @@ function Read-Choice(
     [string[]]
     $Choices,
     [Parameter(Position = 2)]
-    $Values = $Choices
+    $Values = $Choices,
+    [Alias("L")]
+    [uint]
+    $Limit = 10
 ) {
-    $Selected = 0
+    $Pages = [int][Math]::Ceiling($Choices.Length / $Limit)
+    $Page = 0
+    $Position = 0
     
     $CursorVisible = [Console]::CursorVisible
     [Console]::CursorVisible = $false
     do {
+        $Page = [math]::Floor($Position / $Limit)
+        $Offset = $Page * $Limit
         $Text = Format-Secondary $Prompt
-        for ($I = 0; $I -lt $Choices.Length; $I++) {
-            if ($I -eq $Selected) {
+        for ($I = $Offset; $I -lt $Offset + $Limit -and $I -lt $Choices.Length; $I++) {
+            if ($I -eq $Position) {
                 $Text += Format-Highlight "`n> $($Choices[$I])"
             }
             else {
                 $Text += "`n  $($Choices[$I])" 
             }
         }
+        if ($Choices.Length -gt $Limit) {
+            $Dots = "•" * $Pages -replace "^(.{$Page}).", "`$1$(Format-Highlight "•")"
+            $Text += "`n`n  $Dots"
+        }
         Write-Host $Text
 
         $Key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         switch ($Key.VirtualKeyCode) {
-            0x26 { $Selected-- }
-            0x28 { $Selected++ }
-            0x0D { $Choice = $Values[$Selected] }
+            0x26 { $Position-- }
+            0x28 { $Position++ }
+            0x25 { $Position = ($Page - 1) * $Limit }
+            0x27 { $Position = ($Page + 1) * $Limit }
+            0x0D { $Choice = $Values[$Position] }
             0x43 { if ($Key.ControlKeyState) { break } }
         }
-        $Selected = ($Selected + $Choices.Length) % $Choices.Length
+        $Position = ($Position + $Choices.Length) % $Choices.Length
         Remove-Lines ($Text -split "\n").Length
     } while (-Not $Choice)
     [Console]::CursorVisible = $CursorVisible
