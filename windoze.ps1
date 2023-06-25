@@ -330,34 +330,47 @@ do {
 } until ($Source)
 $SourceName = Split-Path $Source -Leaf
 
-# Mount source.
-$SourceDisk = Write-Spin "Mounting source $(Format-Highlight $Source)." {
-    Mount-DiskImage -ImagePath $using:Source
-}
-$SourceVolume = Get-Volume -DiskImage $SourceDisk
-$SourceDir = "$($SourceVolume.DriveLetter):"
-$BootPath = Join-Path $SourceDir "sources/boot.wim"
-$ImagePath = Join-Path $SourceDir "sources/install.wim"
-
-# Check WIM files.
-if (-Not (Test-Path $BootPath)) {
-    Write-Fail "Couldn't find Windows boot file $(Format-Secondary $BootPath)."
-}
-if (-Not (Test-Path $ImagePath) ) {
-    Write-Fail "Couldn't find Windows installation file $(Format-Secondary $ImagePath)."
-}
-
-# Copy source.
 $SourceEdit = Join-Path $PWD "disc-images" $SourceName
 $ImagePath = Join-Path $SourceEdit "sources/install.wim"
-Write-Spin "Copying source to $(Format-Highlight $SourceEdit)" {
-    xcopy.exe /S /E /I /H /R /Y /J $SourceDir "$SourceEdit"
-} | Out-Null
+if (Test-Path (Join-Path $SourceEdit "*")) {
+    Write-Success "Using existing disc image directory $(Format-Highlight $SourceEdit)."
+}
+else {
+    # Mount source.
+    $SourceDisk = Write-Spin "Mounting source $(Format-Highlight $Source)." {
+        Mount-DiskImage -ImagePath $using:Source
+    }
+    $SourceVolume = Get-Volume -DiskImage $SourceDisk
+    $SourceDir = "$($SourceVolume.DriveLetter):"
+    $SourceBoot = Join-Path $SourceDir "sources/boot.wim"
+    $SourceImage = Join-Path $SourceDir "sources/install.wim"
 
-# Dismount source.
-Write-Spin "Dismounting source $(Format-Highlight $SourceVolume.DriveLetter)." {
-    Dismount-DiskImage -InputObject $using:SourceDisk
-} | Out-Null
+    # Check WIM files.
+    if (-Not (Test-Path $SourceBoot)) {
+        Write-Fail "Couldn't find Windows boot file $(Format-Secondary $SourceBoot)."
+    }
+    if (-Not (Test-Path $SourceImage) ) {
+        Write-Fail "Couldn't find Windows installation file $(Format-Secondary $SourceImage)."
+    }
+
+    # Copy source.
+    Write-Spin "Creating disc image directory $(Format-Highlight $SourceEdit)." {
+        New-Item $using:SourceEdit -ItemType "Directory"
+    } | Out-Null
+    Write-Spin "Copying source to disc image directory." {
+        Copy-Item (Join-Path $using:SourceDir "*") $using:SourceEdit -Force -Recurse
+    }
+    Write-Spin "Making disc image directory writable." {
+        Get-ChildItem $using:SourceEdit -Recurse -File `
+        | ForEach-Object { Set-ItemProperty $_ IsReadOnly $false }
+    } | Out-Null
+
+    # Dismount source.
+    Write-Spin "Dismounting source $(Format-Highlight $SourceVolume.DriveLetter)." {
+        Dismount-DiskImage -InputObject $using:SourceDisk
+    } | Out-Null
+}
+
 
 # Get Windows image.
 if (-Not $ImageName) {
@@ -376,13 +389,15 @@ if (-Not $ImageName) {
 }
 
 # Mount Windows image.
-$ImageEdit = Join-Path $PWD "edits" $SourceName $ImageName
-if (Test-Path (Join-Path $ImageEdit "*")) { Write-Success "Using existing edit directory $(Format-Highlight $ImageEdit)." }
+$ImageEdit = Join-Path $PWD "windows-images" $SourceName $ImageName
+if (Test-Path (Join-Path $ImageEdit "*")) {
+    Write-Success "Using existing Windows image directory $(Format-Highlight $ImageEdit)."
+}
 else {
-    Write-Spin "Creating edit directory $(Format-Highlight $ImageEdit)." {
+    Write-Spin "Creating Windows image directory $(Format-Highlight $ImageEdit)." {
         New-Item -Path $using:ImageEdit -ItemType "Directory"
     } | Out-Null
-    Write-Spin "Mounting edit of $(Format-Highlight $ImageName)." {
-        Mount-WindowsImage -Path $using:ImageEdit -ImagePath $using:ImagePath -Index $using:ImageIndex
+    Write-Spin "Mounting Windows image of $(Format-Highlight $ImageName)." {
+        Mount-WindowsImage -Path $using:ImageEdit -ImagePath $using:ImagePath -Name $using:ImageName
     } | Out-Null
 }
