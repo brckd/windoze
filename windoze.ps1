@@ -278,7 +278,6 @@ function Read-Choice(
     [string[]]
     $Choices,
     [Parameter(Position = 2)]
-    [string[]]
     $Values = $Choices
 ) {
     $Selected = 0
@@ -400,4 +399,21 @@ else {
     Write-Spin "Mounting Windows image of $(Format-Highlight $ImageName)." {
         Mount-WindowsImage -Path $using:ImageEdit -ImagePath $using:ImagePath -Name $using:ImageName
     } | Out-Null
+}
+
+$Action = Read-Choice "Select an action." "Save & Exit", "Discard & Exit", "Exit"
+switch ($Action) {
+    "Save & Exit" {
+        Write-Spin "Saving changes." {
+            Dismount-WindowsImage -Path $using:ImageEdit -Save
+        } | Out-Null
+        exit 0
+    }
+    "Discard & Exit" {
+        Write-Spin "Discarding changes." {
+            Dismount-WindowsImage -Path $using:ImageEdit -Discard
+        } | Out-Null
+        exit 0 
+    }
+    "Exit" { exit 0 }
 }
