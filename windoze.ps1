@@ -442,25 +442,24 @@ else {
 }
 
 while ($true) {
-    $Action = Read-Choice "Select an action." "Toggle feature", "Save & Exit", "Discard & Exit", "Exit"
+    $Action = Read-Choice "Select an action." "Select features", "Save & Exit", "Discard & Exit", "Exit"
     switch ($Action) {
-        "Toggle feature" {
+        "Select features" {
             $Features = Write-Spin "Getting features." {
                 Get-WindowsOptionalFeature -Path $using:ImageEdit
             }
-            $FeatureNames = $Features | ForEach-Object {
-                "$($_.FeatureName) ($($_.State))"
-            }
+            $Selected = $Features | Where-Object { $_.State -eq "Enabled" }
+            $FeatureNames = $Features | ForEach-Object { $_.FeatureName }
         
-            $Feature = Read-Choice "Toggle feature." $FeatureNames $Features
-            $Enabled = $Feature.State -eq "Enabled"
-            $Text = "$(if ($Enabled) { "Disabling" } else { "Enabling" }) feature $(Format-Highlight $Feature.FeatureName)."
-            Write-Spin $Text {
-                if ($using:Enabled) {
-                    Disable-WindowsOptionalFeature -Path $using:ImageEdit -FeatureName $using:Feature.FeatureName
-                }
-                else {
-                    Enable-WindowsOptionalFeature -Path $using:ImageEdit -FeatureName $using:Feature.FeatureName
+            $Choices = Read-Choice "Select features." $FeatureNames $Features -Multiple -S $Selected
+            Write-Spin "Updating features." {
+                foreach ($Feature in $using:Features) {
+                    if ($Feature.State -eq "Disabled" -and $using:Choices -contains $Feature) {
+                        Enable-WindowsOptionalFeature -Path $using:ImageEdit -FeatureName $Feature.FeatureName -All
+                    }
+                    elseif ($Feature.Stae -eq "Enabled" -and $using:Choices -notcontains $Feature) {
+                        Disable-WindowsOptionalFeature -Path $using:ImageEdit -FeatureName $Feature.FeatureName -All
+                    }
                 }
             } | Out-Null
         }
