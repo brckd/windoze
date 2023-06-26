@@ -40,6 +40,7 @@ $env:WINDOZE_EMPTY = "  "
 $env:WINDOZE_CURSOR ??= "> "
 $env:WINDOZE_SELECT ??= "◉ "
 $env:WINDOZE_UNSELECT ??= "○ "
+$env:WINDOZE_OSCDIMG = Join-Path ${env:Programfiles(x86)} "Windows Kits" "*" "Assessment and Deployment Kit" "Deployment Tools" "*" "Oscdimg"
 
 <#
 .DESCRIPTION
@@ -464,14 +465,43 @@ while ($true) {
             } | Out-Null
         }
         "Save & Exit" {
-            Write-Spin "Saving changes." {
+            Write-Spin "Saving changes to $(Format-Highlight "windows image")." {
                 Dismount-WindowsImage -Path $using:ImageEdit -Save
+            } | Out-Null
+            if (-Not (Test-Path $env:WINDOZE_OSCDIMG)) {
+                Write-Fail "Couldn't find Oscdimg tool."
+                $Method = Read-Choice "Select where to get the Oscdimg tool from." "Local path", "Winget"
+                switch ($Method) {
+                    "Local path" {
+                        $env:WINDOZE_OSCDIMG = Read-Input "Enter the folder containing the Oscdimg tools."
+                    }
+                    "Winget" {
+                        Write-Spin "Installing the $(Format-Highlight "Windows ADK")." {
+                            winget.exe install Microsoft.WindowsADK
+                        } | Out-Null
+                    }
+                }
+            }
+            $SavePath = Read-Input "Enter the path to save the altered disc image at." 
+            $OscdimgPath = (Join-Path $env:WINDOZE_OSCDIMG "oscdimg.exe" | Resolve-Path)[0]
+            $EtfsbootPath = Join-Path $SourceEdit "boot" "etfsboot.com"
+            $EfisysPath = Join-Path $SourceEdit "efi" "microsoft" "boot" "efisys.bin"
+            Write-Spin "Saving changes to disc image at $(Format-Highlight $SavePath)." {
+                & $using:OscdimgPath -m -o -u2 -udfver102 `
+                    -bootdata:2`#p0, e, b$using:EtfsbootPath`#pEF, e, b$using:EfisysPath `
+                    $using:SourceEdit $using:SavePath
+            } | Out-Null
+            Write-Spin "Deleting disc image directory." {
+                Remove-Item -Recurse -Force $using:SourceEdit
             } | Out-Null
             exit 0
         }
         "Discard & Exit" {
-            Write-Spin "Discarding changes." {
+            Write-Spin "Discarding changes to windows image." {
                 Dismount-WindowsImage -Path $using:ImageEdit -Discard
+            } | Out-Null
+            Write-Spin "Discarding changes to disc image." {
+                Remove-Item -Recurse -Force $using:SourceEdit
             } | Out-Null
             exit 0 
         }
