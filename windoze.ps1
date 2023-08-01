@@ -129,12 +129,15 @@ else {
     } | Out-Null
 }
 
+$Actions = "Select features", "Remove preinstalled apps", "Remove system packages", "Save & exit", "Discard & exit", "Exit"
 while ($true) {
-    $Action = Read-Choice "Select an action." "Select features", "Save & Exit", "Discard & Exit", "Exit"
+    $Action = Read-Choice "Select an action." $Actions
     switch ($Action) {
-        "Select features" { Start-Features $ImageEdit }
-        "Save & Exit" { Start-Save $ImageEdit }
-        "Discard & Exit" { Start-Discard $ImageEdit }
+        "Select features" { Start-SelectFeatures $ImageEdit }
+        "Remove preinstalled apps" { Start-RemoveAppxPackages $ImageEdit }
+        "Remove system packages" { Start-RemoveSystemPackages $ImageEdit }
+        "Save & exit" { Start-Save $ImageEdit }
+        "Discard & exit" { Start-Discard $ImageEdit }
         "Exit" { exit 0 }
     }
 }

@@ -1,4 +1,4 @@
-function Start-Features (
+function Start-SelectFeatures (
     [Parameter(Mandatory, Position = 0)]
     [string]$ImageEdit
 ) {
@@ -19,6 +19,40 @@ function Start-Features (
             }
         }
     } | Out-Null
+}
+
+function Start-RemoveAppxPackages (
+    [Parameter(Mandatory, Position = 0)]
+    [string]$ImageEdit
+) {
+    $Packages = Write-Spin "Getting preinstalled apps." {
+        Get-AppxProvisionedPackage -Path $using:ImageEdit
+    }
+    $PackageNames = $Packages | ForEach-Object { $_.DisplayName }
+    $Choices = Read-Choice "Select preinstalled apps to uninstall." $PackageNames $Packages -Multiple
+
+    Write-Spin "Removing preinstalled apps." {
+        foreach ($Package in $using:Choices) {
+            Remove-AppxProvisionedPackage -Path $using:ImageEdit -PackageName $Package.PackageName
+        }
+    }
+}
+
+function Start-RemoveSystemPackages (
+    [Parameter(Mandatory, Position = 0)]
+    [string]$ImageEdit
+) {
+    $Packages = Write-Spin "Getting system packages." {
+        Get-WindowsPackage -Path $using:ImageEdit
+    }
+    $PackageNames = $Packages | ForEach-Object { $_.PackageName -replace "~.*$" }
+    $Choices = Read-Choice "Select system packages to uninstall." $PackageNames $Packages -Multiple
+
+    Write-Spin "Removing system packages." {
+        foreach ($Package in $using:Choices) {
+            Remove-WindowsPackage -Path $using:ImageEdit -PackageName $Package.PackageName
+        }
+    }
 }
 
 function Start-Save (
