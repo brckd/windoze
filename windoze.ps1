@@ -136,8 +136,8 @@ while ($true) {
         "Select features" { Start-SelectFeatures $ImageEdit }
         "Remove preinstalled apps" { Start-RemoveAppxPackages $ImageEdit }
         "Remove system packages" { Start-RemoveSystemPackages $ImageEdit }
-        "Save & exit" { Start-Save $ImageEdit }
-        "Discard & exit" { Start-Discard $ImageEdit }
+        "Save & exit" { Start-Save $ImageEdit; exit 0 }
+        "Discard & exit" { Start-Discard $ImageEdit; exit 0 }
         "Exit" { exit 0 }
     }
 }

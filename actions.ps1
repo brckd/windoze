@@ -65,7 +65,7 @@ function Start-Save (
         Dismount-WindowsImage -Path $using:ImageEdit -Save
     } | Out-Null
     
-    while (-Not (Test-Path $OscdimgPath -PathType Container)) {
+    while (-Not (Test-Path $OscdimgPath -PathType Leaf)) {
         Write-Fail "Couldn't find Oscdimg tool."
         $OscdimgPath = Get-Oscdimg
     }
@@ -82,7 +82,6 @@ function Start-Save (
     Write-Spin "Deleting disc image directory." {
         Remove-Item -Recurse -Force $using:SourceEdit
     } | Out-Null
-    exit 0
 }
 
 function Get-Oscdimg {
@@ -110,5 +109,4 @@ function Start-Discard (
     Write-Spin "Discarding changes to disc image." {
         Remove-Item -Recurse -Force $using:SourceEdit
     } | Out-Null
-    exit 0 
 }
