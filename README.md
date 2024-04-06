@@ -4,6 +4,10 @@
 
 Glamorous shell script to create your very own Windows image.
 
+> [!Warning]
+> This project has been archived, as I don't use Windows anymore, partly because it's cumbersome to customize.
+> To customize your OS, use any of the projects mentioned below, or better jet, don't use Windows.
+
 ## Features
 
 - Almost as simple as [Tiny11Builder](https://github.com/ntdevlabs/tiny11builder)
